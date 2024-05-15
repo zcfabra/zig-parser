@@ -203,7 +203,7 @@ const BinaryNode = struct {
         self: *BinaryNode,
     ) ParserError![]const u8 {
         const l = try self.l.repr();
-        const r = try self.l.repr();
+        const r = try self.r.repr();
         // defer allocator.free(l);
         // defer allocator.free(r);
         const str = std.fmt.allocPrint(
@@ -360,9 +360,9 @@ pub fn main() !void {
     const src = "(10 + 10) * 100";
     var tokenizer = try Tokenizer.init(src);
     const tokens = try tokenizer.tokenize();
-    for (tokens) |token| {
-        print("Token: {s}\n", .{token.literal});
-    }
+    // for (tokens) |token| {
+    //     print("Token: {s}\n", .{token.literal});
+    // }
 
     var parser = Parser{
         .tokens = tokens,
