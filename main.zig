@@ -15,6 +15,12 @@ const TokenType = enum {
     MUL,
     SUB,
     DIV,
+    IDENTIFIER,
+};
+
+const TokenizerError = error{
+    InvalidTokenFound,
+    MemoryManagementError,
 };
 
 const Token = struct {
@@ -54,7 +60,6 @@ const Tokenizer = struct {
 
     fn remove_spaces(src: []const u8) ![]const u8 {
         var new_str = ArrayList(u8).init(allocator);
-        print("ALLOC STRING\n", .{});
         defer new_str.deinit();
         for (src) |ch| {
             if (ch != ' ') {
@@ -63,53 +68,83 @@ const Tokenizer = struct {
         }
         return new_str.toOwnedSlice();
     }
+    fn is_alpha(char: u8) bool {
+        return ('A' <= char and char <= 'Z') or ('a' <= char and char <= 'z');
+    }
     fn is_num(char: u8) bool {
         return ('0' <= char and char <= '9');
     }
-    fn tokenize(self: *Tokenizer) ![]Token {
+    fn get_char_token(
+        self: *Tokenizer,
+        token_type: TokenType,
+    ) Token {
+        const token =
+            Token.init(
+            self.src[self.r .. self.r + 1],
+            token_type,
+        );
+        self.r += 1;
+        self.l = self.r;
+        return token;
+    }
+    fn tokenize(self: *Tokenizer) TokenizerError![]Token {
         var tokens = ArrayList(Token).init(allocator);
         defer tokens.deinit();
+        var tok: ?Token = null;
 
         while (self.r < self.src.len) {
             const char = self.src[self.r];
             switch (char) {
                 '+' => {
-                    const tok =
-                        Token.init(
-                        self.src[self.r .. self.r + 1],
-                        TokenType.ADD,
-                    );
-                    self.r += 1;
-                    self.l = self.r;
-                    try tokens.append(tok);
+                    tok = self.get_char_token(TokenType.ADD);
                 },
                 '*' => {
-                    const tok =
-                        Token.init(
-                        self.src[self.r .. self.r + 1],
-                        TokenType.MUL,
-                    );
-                    self.r += 1;
-                    self.l = self.r;
-                    try tokens.append(tok);
+                    tok = self.get_char_token(TokenType.MUL);
+                },
+                '-' => {
+                    tok = self.get_char_token(TokenType.SUB);
+                },
+                '/' => {
+                    tok = self.get_char_token(TokenType.DIV);
+                },
+                '(' => {
+                    tok = self.get_char_token(TokenType.LPAREN);
                 },
                 '0'...'9' => {
                     while (self.r < self.src.len and Tokenizer.is_num(self.src[self.r])) {
                         self.r += 1;
                     }
-                    const tok = Token.init(
+                    tok = Token.init(
                         self.src[self.l..self.r],
-                        TokenType.MUL,
+                        TokenType.NUM,
                     );
                     self.l = self.r;
-                    try tokens.append(tok);
                 },
-                else => {},
+                'A'...'Z', 'a'...'z' => {
+                    while (self.r < self.src.len and Tokenizer.is_alpha(self.src[self.r])) {
+                        self.r += 1;
+                    }
+                    tok = Token.init(
+                        self.src[self.l..self.r],
+                        TokenType.IDENTIFIER,
+                    );
+                    self.l = self.r;
+                },
+                else => {
+                    return TokenizerError.InvalidTokenFound;
+                },
             }
+            tokens.append(tok.?) catch {
+                return TokenizerError.InvalidTokenFound;
+            };
         }
-        return tokens.toOwnedSlice();
+        return tokens.toOwnedSlice() catch {
+            return TokenizerError.MemoryManagementError;
+        };
     }
 };
+
+const AstNode = struct {};
 
 pub fn main() !void {
     const src = "10 + 90 + 10 * 90 + 10";
