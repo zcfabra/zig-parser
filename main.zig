@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const ArrayList = std.ArrayList;
-const allocator = std.heap.page_allocator;
 const print = std.debug.print;
 
 fn createInit(alloc: std.mem.Allocator, comptime T: type, props: anytype) !*T {
@@ -24,7 +23,7 @@ const TokenType = enum {
     IDENTIFIER,
 };
 
-const Precendence = enum(i32) {
+pub const Precendence = enum(i32) {
     LOWEST,
     ADDSUB,
     DIVMUL,
@@ -71,32 +70,20 @@ const Token = struct {
     }
 };
 
-pub fn get_tokens(src: []const u8) *[]Token {
-    var list = ArrayList(u8).init(allocator);
-    defer list.deinit();
-
-    for (src) |char| {
-        if (char != ' ') {
-            try list.append(char);
-        }
-    }
-    return [_]Token{};
-}
-
-const Tokenizer = struct {
+pub const Tokenizer = struct {
     src: []const u8,
     r: usize,
     l: usize,
-    fn init(src: []const u8) !Tokenizer {
+    pub fn init(src: []const u8, allocator: *std.mem.Allocator) !Tokenizer {
         return Tokenizer{
-            .src = try Tokenizer.remove_spaces(src),
+            .src = try Tokenizer.remove_spaces(src, allocator),
             .l = 0,
             .r = 0,
         };
     }
 
-    fn remove_spaces(src: []const u8) ![]const u8 {
-        var new_str = ArrayList(u8).init(allocator);
+    fn remove_spaces(src: []const u8, allocator: *std.mem.Allocator) ![]const u8 {
+        var new_str = ArrayList(u8).init(allocator.*);
         defer new_str.deinit();
         for (src) |ch| {
             if (ch != ' ') {
@@ -124,8 +111,8 @@ const Tokenizer = struct {
         self.l = self.r;
         return token;
     }
-    fn tokenize(self: *Tokenizer) TokenizerError![]Token {
-        var tokens = ArrayList(Token).init(allocator);
+    pub fn tokenize(self: *Tokenizer, allocator: *std.mem.Allocator) TokenizerError![]Token {
+        var tokens = ArrayList(Token).init(allocator.*);
         defer tokens.deinit();
         var tok: ?Token = null;
 
@@ -199,20 +186,17 @@ const BinaryNode = struct {
     r: *AstNode,
     op: Token,
 
-    fn repr(
-        self: *BinaryNode,
-    ) ParserError![]const u8 {
-        const l = try self.l.repr();
-        const r = try self.r.repr();
+    fn repr(self: *BinaryNode, allocator: *std.mem.Allocator) ParserError![]const u8 {
+        const l = try self.l.repr(allocator);
+        const r = try self.r.repr(allocator);
         // defer allocator.free(l);
         // defer allocator.free(r);
-        const str = std.fmt.allocPrint(
-            allocator,
+        return std.fmt.allocPrint(
+            allocator.*,
             "( {s} {s} {s} )",
             .{ l, self.op.literal, r },
         ) catch
-            return ParserError.MemoryError;
-        return str;
+            ParserError.MemoryError;
     }
 };
 
@@ -220,11 +204,11 @@ const UnaryNode = struct {
     r: *AstNode,
     op: Token,
 
-    fn repr(self: *UnaryNode) ParserError![]const u8 {
-        const r = try self.r.repr();
+    fn repr(self: *UnaryNode, allocator: *std.mem.Allocator) ParserError![]const u8 {
+        const r = try self.r.repr(allocator);
         // defer allocator.free(r);
         const str = std.fmt.allocPrint(
-            allocator,
+            allocator.*,
             "( {s} {s} )",
             .{ self.op.literal, r },
         ) catch
@@ -233,62 +217,70 @@ const UnaryNode = struct {
     }
 };
 
-const AstNode = union(enum) {
+pub const AstNode = union(enum) {
     AstLiteralNode: *LiteralNode,
     AstBinaryNode: *BinaryNode,
     AstUnaryNode: *UnaryNode,
 
-    fn repr(self: AstNode) ParserError![]const u8 {
+    pub fn repr(self: AstNode, allocator: *std.mem.Allocator) ParserError![]const u8 {
         return switch (self) {
             AstNode.AstLiteralNode => |literal| literal.repr(),
-            AstNode.AstUnaryNode => |unary| try unary.repr(),
-            AstNode.AstBinaryNode => |binary| try binary.repr(),
+            AstNode.AstUnaryNode => |unary| try unary.repr(allocator),
+            AstNode.AstBinaryNode => |binary| try binary.repr(allocator),
         };
     }
     fn init_binary(
+        alloc: *std.mem.Allocator,
         op_token: Token,
         l: *AstNode,
         r: *AstNode,
     ) ParserError!*AstNode {
-        const binary_node = createInit(allocator, BinaryNode, .{
+        const binary_node = createInit(alloc.*, BinaryNode, .{
             .op = op_token,
             .l = l,
             .r = r,
         }) catch
             return ParserError.MemoryError;
         return createInit(
-            allocator,
+            alloc.*,
             AstNode,
             .{ .AstBinaryNode = binary_node },
         ) catch
             return ParserError.MemoryError;
     }
-    fn init_unary(op_token: Token, r: *AstNode) ParserError!*AstNode {
+    fn init_unary(
+        alloc: *std.mem.Allocator,
+        op_token: Token,
+        r: *AstNode,
+    ) ParserError!*AstNode {
         const unary_node = createInit(
-            allocator,
+            alloc.*,
             UnaryNode,
             .{ .op = op_token, .r = r },
         ) catch {
             return ParserError.MemoryError;
         };
         return createInit(
-            allocator,
+            alloc.*,
             AstNode,
             .{ .AstUnaryNode = unary_node },
         ) catch {
             return ParserError.MemoryError;
         };
     }
-    fn init_literal(literal: []const u8) ParserError!*AstNode {
+    fn init_literal(
+        alloc: *std.mem.Allocator,
+        literal: []const u8,
+    ) ParserError!*AstNode {
         const literal_node = createInit(
-            allocator,
+            alloc.*,
             LiteralNode,
             .{ .literal = literal },
         ) catch {
             return ParserError.MemoryError;
         };
         return createInit(
-            allocator,
+            alloc.*,
             AstNode,
             .{ .AstLiteralNode = literal_node },
         ) catch {
@@ -297,12 +289,21 @@ const AstNode = union(enum) {
     }
 };
 
-const Parser = struct {
+pub const Parser = struct {
+    allocator: *std.mem.Allocator,
     tokens: []Token,
     l: usize,
     r: usize,
+    pub fn init(tokens: []Token, allocator: *std.mem.Allocator) Parser {
+        return Parser{
+            .allocator = allocator,
+            .tokens = tokens,
+            .l = 0,
+            .r = 0,
+        };
+    }
 
-    fn parse(self: *Parser, precedence: Precendence) ParserError!*AstNode {
+    pub fn parse(self: *Parser, precedence: Precendence) ParserError!*AstNode {
         var node: ?*AstNode = null;
         while (self.r < self.tokens.len) {
             const token = self.tokens[self.r];
@@ -318,7 +319,7 @@ const Parser = struct {
             } else if (token.is_unary_operator()) {
                 self.r += 1;
                 node = try self.parse(token.get_precedence());
-                return AstNode.init_unary(token, node.?);
+                return AstNode.init_unary(self.allocator, token, node.?);
             } else if (token.is_binary_operator()) {
                 const new_precedence = token.get_precedence();
                 if (@intFromEnum(new_precedence) < @intFromEnum(precedence)) {
@@ -333,8 +334,12 @@ const Parser = struct {
                     self.r += 1;
                     self.l = self.r;
                     const r = try self.parse(new_precedence);
-                    const binary_node =
-                        try AstNode.init_binary(token, node.?, r);
+                    const binary_node = try AstNode.init_binary(
+                        self.allocator,
+                        token,
+                        node.?,
+                        r,
+                    );
                     node = binary_node;
                 }
             } else {
@@ -352,25 +357,24 @@ const Parser = struct {
         while (self.l < self.tokens.len and (self.tokens[self.l].type == TokenType.LPAREN or self.tokens[self.l].type == TokenType.BANG)) {
             self.l += 1;
         }
-        return try AstNode.init_literal(self.tokens[self.l].literal);
+        return try AstNode.init_literal(
+            self.allocator,
+            self.tokens[self.l].literal,
+        );
     }
 };
 
 pub fn main() !void {
-    const src = "(10 + 10) * 100";
-    var tokenizer = try Tokenizer.init(src);
-    const tokens = try tokenizer.tokenize();
-    // for (tokens) |token| {
-    //     print("Token: {s}\n", .{token.literal});
-    // }
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var arena_allocator = arena.allocator();
 
-    var parser = Parser{
-        .tokens = tokens,
-        .l = 0,
-        .r = 0,
-    };
+    const src = "(10 + 10) * 100";
+    var tokenizer = try Tokenizer.init(src, &arena_allocator);
+    const tokens = try tokenizer.tokenize(&arena_allocator);
+    var parser = Parser.init(tokens, &arena_allocator);
     const ast = try parser.parse(Precendence.LOWEST);
-    const repr = ast.repr() catch {
+    const repr = ast.repr(&arena_allocator) catch {
         print("Error\n", .{});
         return;
     };
