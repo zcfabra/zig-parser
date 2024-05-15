@@ -245,6 +245,24 @@ const AstNode = union(enum) {
             AstNode.AstBinaryNode => |binary| try binary.repr(),
         };
     }
+    fn init_binary(
+        op_token: Token,
+        l: *AstNode,
+        r: *AstNode,
+    ) ParserError!*AstNode {
+        const binary_node = createInit(allocator, BinaryNode, .{
+            .op = op_token,
+            .l = l,
+            .r = r,
+        }) catch
+            return ParserError.MemoryError;
+        return createInit(
+            allocator,
+            AstNode,
+            .{ .AstBinaryNode = binary_node },
+        ) catch
+            return ParserError.MemoryError;
+    }
     fn init_unary(op_token: Token, r: *AstNode) ParserError!*AstNode {
         const unary_node = createInit(
             allocator,
@@ -288,7 +306,16 @@ const Parser = struct {
         var node: ?*AstNode = null;
         while (self.r < self.tokens.len) {
             const token = self.tokens[self.r];
-            if (token.is_unary_operator()) {
+            if (token.type == TokenType.LPAREN) {
+                self.r += 1;
+                node = try self.parse(Precendence.LOWEST);
+            } else if (token.type == TokenType.RPAREN) {
+                if (node == null) {
+                    node = try self.get_literal_node();
+                }
+                self.r += 1;
+                return node.?;
+            } else if (token.is_unary_operator()) {
                 self.r += 1;
                 node = try self.parse(token.get_precedence());
                 return AstNode.init_unary(token, node.?);
@@ -303,17 +330,12 @@ const Parser = struct {
                     if (node == null) {
                         node = try self.get_literal_node();
                     }
+                    self.r += 1;
+                    self.l = self.r;
                     const r = try self.parse(new_precedence);
-                    var binary_node =
-                        BinaryNode{
-                        .l = node.?,
-                        .r = r,
-                        .op = token,
-                    };
-                    var ast_node = AstNode{
-                        .AstBinaryNode = &binary_node,
-                    };
-                    node = &ast_node;
+                    const binary_node =
+                        try AstNode.init_binary(token, node.?, r);
+                    node = binary_node;
                 }
             } else {
                 self.r += 1;
@@ -335,7 +357,7 @@ const Parser = struct {
 };
 
 pub fn main() !void {
-    const src = "!10";
+    const src = "(10 + 10) * 100";
     var tokenizer = try Tokenizer.init(src);
     const tokens = try tokenizer.tokenize();
     for (tokens) |token| {
