@@ -2,14 +2,14 @@ const std = @import("std");
 const tokenizer = @import("tokenizer.zig");
 const utils = @import("utils.zig");
 
-const LiteralNode = struct {
-    literal: []const u8,
+pub const LiteralNode = struct {
+    token: tokenizer.Token,
 
     fn repr(self: *LiteralNode) []const u8 {
-        return self.literal;
+        return self.token.literal;
     }
 };
-const BinaryNode = struct {
+pub const BinaryNode = struct {
     l: *AstNode,
     r: *AstNode,
     op: tokenizer.Token,
@@ -31,7 +31,7 @@ const BinaryNode = struct {
     }
 };
 
-const UnaryNode = struct {
+pub const UnaryNode = struct {
     r: *AstNode,
     op: tokenizer.Token,
 
@@ -101,12 +101,12 @@ pub const AstNode = union(enum) {
     }
     pub fn init_literal(
         alloc: *std.mem.Allocator,
-        literal: []const u8,
+        token: tokenizer.Token,
     ) utils.MemoryError!*AstNode {
         const literal_node = utils.createInit(
             alloc.*,
             LiteralNode,
-            .{ .literal = literal },
+            .{ .token = token },
         ) catch {
             return utils.MemoryError.AllocationError;
         };

@@ -90,7 +90,7 @@ pub const Parser = struct {
         }
         return ast.AstNode.init_literal(
             self.allocator,
-            self.tokens[self.l].literal,
+            self.tokens[self.l],
         ) catch ParserError.MemoryError;
     }
 };
