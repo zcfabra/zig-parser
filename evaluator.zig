@@ -92,6 +92,35 @@ pub const Evaluator = struct {
         const r_expr = try self.eval(binary.r);
 
         switch (binary.op.type) {
+            TokenType.EQ => {
+                switch (l_expr) {
+                    EvaluatedLiteral.Int => |l| {
+                        switch (r_expr) {
+                            EvaluatedLiteral.Int => |r| {
+                                return EvaluatedLiteral{
+                                    .Bool = Bool{
+                                        .value = l.value == r.value,
+                                    },
+                                };
+                            },
+                            else => return EvalError.InvalidData,
+                        }
+                    },
+                    EvaluatedLiteral.Bool => |l| {
+                        switch (r_expr) {
+                            EvaluatedLiteral.Bool => |r| {
+                                return EvaluatedLiteral{
+                                    .Bool = Bool{
+                                        .value = l.value == r.value,
+                                    },
+                                };
+                            },
+                            else => return EvalError.InvalidData,
+                        }
+                    },
+                    // else => return EvalError.InvalidData,
+                }
+            },
             TokenType.ADD => {
                 switch (l_expr) {
                     EvaluatedLiteral.Int => |l| {
@@ -101,14 +130,10 @@ pub const Evaluator = struct {
                                     .Int = Int{ .value = l.value + r.value },
                                 };
                             },
-                            else => {
-                                return EvalError.InvalidData;
-                            },
+                            else => return EvalError.InvalidData,
                         }
                     },
-                    else => {
-                        return EvalError.OperandMismatch;
-                    },
+                    else => return EvalError.OperandMismatch,
                 }
             },
 

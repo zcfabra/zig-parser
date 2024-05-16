@@ -100,6 +100,12 @@ pub const Tokenizer = struct {
         while (self.r < self.src.len) {
             const char = self.src[self.r];
             switch (char) {
+                '=' => {
+                    if ((self.r + 1 < self.src.len) and self.src[self.r + 1] == '=') {
+                        tok = Token.init(self.src[self.r .. self.r + 2], TokenType.EQ);
+                        self.r += 2;
+                    }
+                },
                 '!' => {
                     tok = self.get_char_token(TokenType.BANG);
                 },
@@ -131,7 +137,7 @@ pub const Tokenizer = struct {
                     );
                     self.l = self.r;
                 },
-                'A'...'Z', 'a'...'z' => {
+                'A'...'Z', 'a'...'z', '_' => {
                     while (self.r < self.src.len and Tokenizer.is_alpha(self.src[self.r])) {
                         self.r += 1;
                     }

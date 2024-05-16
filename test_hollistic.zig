@@ -26,7 +26,7 @@ test "test nested brackets" {
     defer arena.deinit();
     var allocator = arena.allocator();
 
-    const src = "((10 + 10) * 100) * ((10 + 10) * 900)";
+    const src = "((10 + 10) * 100) == ((10 + 10) * 900)";
     var tk = try tokenizer.Tokenizer.init(src, &allocator);
     const tokens = try tk.tokenize(&allocator);
     var prs = parser.Parser.init(tokens, &allocator);
