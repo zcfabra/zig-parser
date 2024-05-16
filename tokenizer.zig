@@ -45,7 +45,12 @@ pub const Token = struct {
     }
     pub fn is_binary_operator(self: *const Token) bool {
         return switch (self.type) {
-            TokenType.ADD, TokenType.MUL, TokenType.EQ, TokenType.SUB, TokenType.DIV => true,
+            TokenType.ADD,
+            TokenType.MUL,
+            TokenType.EQ,
+            TokenType.SUB,
+            TokenType.DIV,
+            => true,
             else => false,
         };
     }
@@ -63,7 +68,10 @@ pub const Tokenizer = struct {
         };
     }
 
-    fn remove_spaces(src: []const u8, allocator: *std.mem.Allocator) ![]const u8 {
+    fn remove_spaces(
+        src: []const u8,
+        allocator: *std.mem.Allocator,
+    ) ![]const u8 {
         var new_str = std.ArrayList(u8).init(allocator.*);
         defer new_str.deinit();
         for (src) |ch| {
@@ -92,7 +100,10 @@ pub const Tokenizer = struct {
         self.l = self.r;
         return token;
     }
-    pub fn tokenize(self: *Tokenizer, allocator: *std.mem.Allocator) TokenizerError![]Token {
+    pub fn tokenize(
+        self: *Tokenizer,
+        allocator: *std.mem.Allocator,
+    ) TokenizerError![]Token {
         var tokens = std.ArrayList(Token).init(allocator.*);
         defer tokens.deinit();
         var tok: ?Token = null;
@@ -101,8 +112,13 @@ pub const Tokenizer = struct {
             const char = self.src[self.r];
             switch (char) {
                 '=' => {
-                    if ((self.r + 1 < self.src.len) and self.src[self.r + 1] == '=') {
-                        tok = Token.init(self.src[self.r .. self.r + 2], TokenType.EQ);
+                    if ((self.r + 1 < self.src.len) and
+                        self.src[self.r + 1] == '=')
+                    {
+                        tok = Token.init(
+                            self.src[self.r .. self.r + 2],
+                            TokenType.EQ,
+                        );
                         self.r += 2;
                     }
                 },
@@ -128,7 +144,9 @@ pub const Tokenizer = struct {
                     tok = self.get_char_token(TokenType.RPAREN);
                 },
                 '0'...'9' => {
-                    while (self.r < self.src.len and Tokenizer.is_num(self.src[self.r])) {
+                    while (self.r < self.src.len and
+                        Tokenizer.is_num(self.src[self.r]))
+                    {
                         self.r += 1;
                     }
                     tok = Token.init(
@@ -138,7 +156,9 @@ pub const Tokenizer = struct {
                     self.l = self.r;
                 },
                 'A'...'Z', 'a'...'z', '_' => {
-                    while (self.r < self.src.len and Tokenizer.is_alpha(self.src[self.r])) {
+                    while (self.r < self.src.len and
+                        Tokenizer.is_alpha(self.src[self.r]))
+                    {
                         self.r += 1;
                     }
                     tok = Token.init(

@@ -19,7 +19,10 @@ pub const Parser = struct {
     tokens: []tokenizer.Token,
     l: usize,
     r: usize,
-    pub fn init(tokens: []tokenizer.Token, allocator: *std.mem.Allocator) Parser {
+    pub fn init(
+        tokens: []tokenizer.Token,
+        allocator: *std.mem.Allocator,
+    ) Parser {
         return Parser{
             .allocator = allocator,
             .tokens = tokens,
@@ -28,7 +31,10 @@ pub const Parser = struct {
         };
     }
 
-    pub fn parse(self: *Parser, precedence: Precendence) ParserError!*ast.AstNode {
+    pub fn parse(
+        self: *Parser,
+        precedence: Precendence,
+    ) ParserError!*ast.AstNode {
         var node: ?*ast.AstNode = null;
         while (self.r < self.tokens.len) {
             const token = self.tokens[self.r];
@@ -85,7 +91,10 @@ pub const Parser = struct {
     }
 
     fn get_literal_node(self: *Parser) ParserError!*ast.AstNode {
-        while (self.l < self.tokens.len and (self.tokens[self.l].type == tokenizer.TokenType.LPAREN or self.tokens[self.l].type == tokenizer.TokenType.BANG)) {
+        while (self.l < self.tokens.len and
+            (self.tokens[self.l].type == tokenizer.TokenType.LPAREN or
+            self.tokens[self.l].type == tokenizer.TokenType.BANG))
+        {
             self.l += 1;
         }
         return ast.AstNode.init_literal(

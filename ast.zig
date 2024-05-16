@@ -35,7 +35,10 @@ pub const UnaryNode = struct {
     r: *AstNode,
     op: tokenizer.Token,
 
-    fn repr(self: *UnaryNode, allocator: *std.mem.Allocator) utils.MemoryError![]const u8 {
+    fn repr(
+        self: *UnaryNode,
+        allocator: *std.mem.Allocator,
+    ) utils.MemoryError![]const u8 {
         const r = try self.r.repr(allocator);
         // defer allocator.free(r);
         const str = std.fmt.allocPrint(
@@ -53,7 +56,10 @@ pub const AstNode = union(enum) {
     AstBinaryNode: *BinaryNode,
     AstUnaryNode: *UnaryNode,
 
-    pub fn repr(self: AstNode, allocator: *std.mem.Allocator) utils.MemoryError![]const u8 {
+    pub fn repr(
+        self: AstNode,
+        allocator: *std.mem.Allocator,
+    ) utils.MemoryError![]const u8 {
         return switch (self) {
             AstNode.AstLiteralNode => |literal| literal.repr(),
             AstNode.AstUnaryNode => |unary| try unary.repr(allocator),

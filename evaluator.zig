@@ -34,7 +34,10 @@ pub const Bool = struct {
 pub const Int = struct {
     value: i32,
 
-    pub fn to_string(self: *const Int, allocator: *std.mem.Allocator) ![]const u8 {
+    pub fn to_string(
+        self: *const Int,
+        allocator: *std.mem.Allocator,
+    ) ![]const u8 {
         return try std.fmt.allocPrint(allocator.*, "{d}", .{self.value});
     }
 };
@@ -48,7 +51,10 @@ pub const Evaluator = struct {
         };
     }
 
-    pub fn eval(self: *Evaluator, node: *ast.AstNode) EvalError!EvaluatedLiteral {
+    pub fn eval(
+        self: *Evaluator,
+        node: *ast.AstNode,
+    ) EvalError!EvaluatedLiteral {
         return try switch (node.*) {
             ast.AstNode.AstLiteralNode => |literal| self.eval_literal(literal),
             ast.AstNode.AstUnaryNode => |unary| self.eval_unary(unary),
@@ -56,7 +62,10 @@ pub const Evaluator = struct {
         };
     }
 
-    fn eval_literal(_: *Evaluator, literal: *ast.LiteralNode) EvalError!EvaluatedLiteral {
+    fn eval_literal(
+        _: *Evaluator,
+        literal: *ast.LiteralNode,
+    ) EvalError!EvaluatedLiteral {
         return switch (literal.token.type) {
             TokenType.NUM => {
                 return EvaluatedLiteral{ .Int = Int{
